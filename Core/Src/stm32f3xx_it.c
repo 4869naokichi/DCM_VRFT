@@ -198,6 +198,25 @@ void SysTick_Handler(void)
 /* please refer to the startup file (startup_stm32f3xx.s).                    */
 /******************************************************************************/
 
+/**
+  * @brief This function handles TIM6 global and DAC1 underrun error interrupts.
+  */
+void TIM6_DAC1_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM6_DAC1_IRQn 0 */
+	if ( LL_TIM_IsActiveFlag_UPDATE(TIM6) == 1 )
+	{
+		LL_TIM_ClearFlag_UPDATE(TIM6);
+		Controller();
+	}
+
+  /* USER CODE END TIM6_DAC1_IRQn 0 */
+
+  /* USER CODE BEGIN TIM6_DAC1_IRQn 1 */
+
+  /* USER CODE END TIM6_DAC1_IRQn 1 */
+}
+
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */

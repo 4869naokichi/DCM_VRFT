@@ -18,11 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stdio.h"
+#include "math.h"
 
 /* USER CODE END Includes */
 
@@ -44,12 +47,14 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+float omega;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+void Set_Motor(int);
 
 /* USER CODE END PFP */
 
@@ -65,6 +70,7 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	setbuf(stdout, NULL);
 
   /* USER CODE END 1 */
 
@@ -87,7 +93,28 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_TIM1_Init();
+  MX_TIM3_Init();
+  MX_TIM6_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
+  LL_USART_EnableIT_RXNE(USART2);
+
+  LL_TIM_EnableCounter(TIM1);
+  LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+  LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+  LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+  LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+  LL_TIM_EnableAllOutputs(TIM1);
+  LL_TIM_OC_SetCompareCH1(TIM1, 0);
+  LL_TIM_OC_SetCompareCH2(TIM1, 0);
+
+  LL_TIM_EnableCounter(TIM3);
+
+  LL_TIM_EnableIT_UPDATE(TIM6);
+  LL_TIM_EnableCounter(TIM6);
+
+  LL_TIM_EnableCounter(TIM7);
 
   /* USER CODE END 2 */
 
@@ -98,6 +125,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  printf("Hello, World!\r\n");
+	  LL_mDelay(100);
   }
   /* USER CODE END 3 */
 }
@@ -110,6 +139,7 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -117,7 +147,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -127,18 +159,81 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_TIM1;
+  PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_PLLCLK;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
 }
 
 /* USER CODE BEGIN 4 */
+void __io_putchar(uint8_t c) {
+	LL_USART_TransmitData8(USART2, c);
+	while (LL_USART_IsActiveFlag_TXE(USART2) == 0);
+}
+
+/**
+ * @brief 制御器
+ * @note 制御周期はプリスケーラとカウンタピリオドの値に依存
+ */
+void Controller()
+{
+	const float T_ctrl = 0.001f;
+	const float PPR = 2048.0f;
+	const float CPR = PPR * 4;
+
+	int16_t count = -LL_TIM_GetCounter(TIM3);
+	LL_TIM_SetCounter(TIM3, 0);
+	omega = (float)count / T_ctrl / CPR * 2 * M_PI;
+
+	/*
+	static int step;
+	if (step < 1000) {
+		setMotor(300);
+		printf("%f,%f\r\n", (float)step * 0.001f, omega);
+	} else if (step < 2000) {
+		setMotor(600);
+		printf("%f,%f\r\n", (float)step * 0.001f, omega);
+	} else {
+		setMotor(300);
+	}
+	step += 2;
+	*/
+}
+
+/**
+ * @brief あ
+ * @param duty デューティ比 [‰]
+ */
+void SetMotor(int duty)
+{
+	if (duty > 950) {
+		duty = 950;
+	} else if(duty < -950) {
+		duty = -950;
+	}
+
+	if (duty > 0) { // 正転
+		LL_TIM_OC_SetCompareCH1(TIM1, duty);
+		LL_TIM_OC_SetCompareCH2(TIM1, 0);
+	} else if (duty < 0) { // 逆転
+		LL_TIM_OC_SetCompareCH1(TIM1, 0);
+		LL_TIM_OC_SetCompareCH2(TIM1, -duty);
+	} else { // 停止
+		LL_TIM_OC_SetCompareCH1(TIM1, 0);
+		LL_TIM_OC_SetCompareCH2(TIM1, 0);
+	}
+}
 
 /* USER CODE END 4 */
 

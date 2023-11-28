@@ -29,6 +29,18 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f3xx_hal.h"
 
+#include "stm32f3xx_ll_tim.h"
+#include "stm32f3xx_ll_usart.h"
+#include "stm32f3xx_ll_rcc.h"
+#include "stm32f3xx_ll_system.h"
+#include "stm32f3xx_ll_gpio.h"
+#include "stm32f3xx_ll_exti.h"
+#include "stm32f3xx_ll_bus.h"
+#include "stm32f3xx_ll_cortex.h"
+#include "stm32f3xx_ll_utils.h"
+#include "stm32f3xx_ll_pwr.h"
+#include "stm32f3xx_ll_dma.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -53,19 +65,32 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void Controller(void);
 
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define MCO_Pin GPIO_PIN_0
+#define MCO_Pin LL_GPIO_PIN_0
 #define MCO_GPIO_Port GPIOF
-#define VCP_TX_Pin GPIO_PIN_2
+#define VCP_TX_Pin LL_GPIO_PIN_2
 #define VCP_TX_GPIO_Port GPIOA
-#define SWDIO_Pin GPIO_PIN_13
+#define ENCA_Pin LL_GPIO_PIN_4
+#define ENCA_GPIO_Port GPIOA
+#define ENCB_Pin LL_GPIO_PIN_6
+#define ENCB_GPIO_Port GPIOA
+#define PWM1L_Pin LL_GPIO_PIN_7
+#define PWM1L_GPIO_Port GPIOA
+#define PWM2L_Pin LL_GPIO_PIN_0
+#define PWM2L_GPIO_Port GPIOB
+#define PWM1H_Pin LL_GPIO_PIN_8
+#define PWM1H_GPIO_Port GPIOA
+#define PWM2H_Pin LL_GPIO_PIN_9
+#define PWM2H_GPIO_Port GPIOA
+#define SWDIO_Pin LL_GPIO_PIN_13
 #define SWDIO_GPIO_Port GPIOA
-#define SWCLK_Pin GPIO_PIN_14
+#define SWCLK_Pin LL_GPIO_PIN_14
 #define SWCLK_GPIO_Port GPIOA
-#define VCP_RX_Pin GPIO_PIN_15
+#define VCP_RX_Pin LL_GPIO_PIN_15
 #define VCP_RX_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
