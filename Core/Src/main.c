@@ -55,6 +55,7 @@ float omega;
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void Set_Motor(int);
+float PID(float, float);
 
 /* USER CODE END PFP */
 
@@ -125,8 +126,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  printf("Hello, World!\r\n");
-	  LL_mDelay(100);
   }
   /* USER CODE END 3 */
 }
@@ -184,7 +183,7 @@ void __io_putchar(uint8_t c) {
 
 /**
  * @brief 制御器
- * @note 制御周期はプリスケーラとカウンタピリオドの値に依存
+ * @note 制御周期�???��?��プリスケーラとカウンタピリオド�???��?��値に依�?
  */
 void Controller()
 {
@@ -196,26 +195,31 @@ void Controller()
 	LL_TIM_SetCounter(TIM3, 0);
 	omega = (float)count / T_ctrl / CPR * 2 * M_PI;
 
+	static int step;
+	Set_Motor((int)PID(omega, 2000.0f));
+	printf("%f,%f\r\n", (float)step * 0.001f, omega);
+	step += 1;
+
 	/*
 	static int step;
 	if (step < 1000) {
-		setMotor(300);
+		Set_Motor(300);
 		printf("%f,%f\r\n", (float)step * 0.001f, omega);
 	} else if (step < 2000) {
-		setMotor(600);
+		Set_Motor(600);
 		printf("%f,%f\r\n", (float)step * 0.001f, omega);
 	} else {
-		setMotor(300);
+		Set_Motor(300);
 	}
-	step += 2;
+	step += 1;
 	*/
 }
 
 /**
- * @brief あ
- * @param duty デューティ比 [‰]
+ * @brief ??��?��?
+ * @param duty ??��?��?ュー??��?��?ィ??��?��? [‰]
  */
-void SetMotor(int duty)
+void Set_Motor(int duty)
 {
 	if (duty > 950) {
 		duty = 950;
@@ -226,13 +230,40 @@ void SetMotor(int duty)
 	if (duty > 0) { // 正転
 		LL_TIM_OC_SetCompareCH1(TIM1, duty);
 		LL_TIM_OC_SetCompareCH2(TIM1, 0);
-	} else if (duty < 0) { // 逆転
+	} else if (duty < 0) { // ??��?��?転
 		LL_TIM_OC_SetCompareCH1(TIM1, 0);
 		LL_TIM_OC_SetCompareCH2(TIM1, -duty);
 	} else { // 停止
 		LL_TIM_OC_SetCompareCH1(TIM1, 0);
 		LL_TIM_OC_SetCompareCH2(TIM1, 0);
 	}
+}
+
+/**
+ * @brief �?ィジタルPID制御器
+ * @param input 入�?
+ * @param ref 目標�?�
+ * @return 出�?
+ */
+float PID(float input, float ref)
+{
+	const float KP = 0.034495f;
+	const float KI = 0.011930f;
+	const float KD = 0.026682f;
+	const float T_ctrl = 0.001f;
+
+	static float ierror;
+	static float derror;
+
+	float error = ref - input;
+	ierror += error;
+	derror = error - derror;
+
+	float output = KP * error + KI * ierror + KD * derror;
+
+	derror = error;
+
+	return output;
 }
 
 /* USER CODE END 4 */
