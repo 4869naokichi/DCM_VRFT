@@ -112,10 +112,12 @@ int main(void)
 
   LL_TIM_EnableCounter(TIM3);
 
-  LL_TIM_EnableIT_UPDATE(TIM6);
   LL_TIM_EnableCounter(TIM6);
 
   LL_TIM_EnableCounter(TIM7);
+
+  LL_mDelay(1000);
+  LL_TIM_EnableIT_UPDATE(TIM6);
 
   /* USER CODE END 2 */
 
@@ -181,10 +183,6 @@ void __io_putchar(uint8_t c) {
 	while (LL_USART_IsActiveFlag_TXE(USART2) == 0);
 }
 
-/**
- * @brief 制御器
- * @note 制御周期�???��?��プリスケーラとカウンタピリオド�???��?��値に依�?
- */
 void Controller()
 {
 	const float T_ctrl = 0.001f;
@@ -195,30 +193,28 @@ void Controller()
 	LL_TIM_SetCounter(TIM3, 0);
 	omega = (float)count / T_ctrl / CPR * 2 * M_PI;
 
-	static int step;
-	Set_Motor((int)PID(omega, 2000.0f));
-	printf("%f,%f\r\n", (float)step * 0.001f, omega);
-	step += 1;
-
 	/*
 	static int step;
+	Set_Motor((int)PID(omega, 500.0f));
+	printf("%.3f,%f\r\n", (float)step * 0.001f, omega);
+	step += 1;
+	*/
+
+	static int step;
 	if (step < 1000) {
-		Set_Motor(300);
-		printf("%f,%f\r\n", (float)step * 0.001f, omega);
-	} else if (step < 2000) {
-		Set_Motor(600);
-		printf("%f,%f\r\n", (float)step * 0.001f, omega);
+		Set_Motor((int)PID(omega, 200.0f));
+	}else if (step < 2000) {
+		printf("%.3f,%f\r\n", (float)step * 0.001f, omega);
+		Set_Motor((int)PID(omega, 500.0f));
+	} else if (step < 3000) {
+		Set_Motor((int)PID(omega, 500.0f));
+		printf("%.3f,%f\r\n", (float)step * 0.001f, omega);
 	} else {
 		Set_Motor(300);
 	}
 	step += 1;
-	*/
 }
 
-/**
- * @brief ??��?��?
- * @param duty ??��?��?ュー??��?��?ィ??��?��? [‰]
- */
 void Set_Motor(int duty)
 {
 	if (duty > 950) {
@@ -227,29 +223,23 @@ void Set_Motor(int duty)
 		duty = -950;
 	}
 
-	if (duty > 0) { // 正転
+	if (duty > 0) {
 		LL_TIM_OC_SetCompareCH1(TIM1, duty);
 		LL_TIM_OC_SetCompareCH2(TIM1, 0);
-	} else if (duty < 0) { // ??��?��?転
+	} else if (duty < 0) {
 		LL_TIM_OC_SetCompareCH1(TIM1, 0);
 		LL_TIM_OC_SetCompareCH2(TIM1, -duty);
-	} else { // 停止
+	} else {
 		LL_TIM_OC_SetCompareCH1(TIM1, 0);
 		LL_TIM_OC_SetCompareCH2(TIM1, 0);
 	}
 }
 
-/**
- * @brief �?ィジタルPID制御器
- * @param input 入�?
- * @param ref 目標�?�
- * @return 出�?
- */
 float PID(float input, float ref)
 {
-	const float KP = 0.034495f;
-	const float KI = 0.011930f;
-	const float KD = 0.026682f;
+	const float KP = -0.013255f;
+	const float KI = 0.011235f;
+	const float KD = 0.178028f;
 	const float T_ctrl = 0.001f;
 
 	static float ierror;
